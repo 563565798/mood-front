@@ -1,0 +1,28 @@
+{
+  "name": "mood-tracker-front",
+  "private": true,
+  "version": "1.0.0",
+  "type": "module",
+  "description": "情绪记录与心理趋势可视化系统 - 前端",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview"
+  },
+  "dependencies": {
+    "vue": "^3.5.24",
+    "vue-router": "^4.4.5",
+    "pinia": "^2.2.8",
+    "axios": "^1.7.7",
+    "element-plus": "^2.9.1",
+    "@element-plus/icons-vue": "^2.3.1",
+    "echarts": "^5.5.1",
+    "dayjs": "^1.11.13"
+  },
+  "devDependencies": {
+    "@vitejs/plugin-vue": "^6.0.1",
+    "vite": "^7.2.2",
+    "unplugin-vue-components": "^0.27.4",
+    "unplugin-auto-import": "^0.18.5"
+  }
+}
