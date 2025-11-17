@@ -324,24 +324,9 @@ const handleAvatarSuccess = (response) => {
 }
 
 // 上传失败
-const handleAvatarError = (error, file, fileList) => {
+const handleAvatarError = () => {
   uploading.value = false
-  console.error('上传失败:', error)
-  
-  // 尝试从错误响应中获取错误信息
-  let errorMsg = '图片上传失败，请重试'
-  if (error && error.response) {
-    const response = error.response
-    if (response.data) {
-      errorMsg = response.data.message || response.data.msg || errorMsg
-    } else if (response.statusText) {
-      errorMsg = response.statusText
-    }
-  } else if (error && error.message) {
-    errorMsg = error.message
-  }
-  
-  ElMessage.error(errorMsg)
+  ElMessage.error('图片上传失败，请重试')
 }
 </script>
 
