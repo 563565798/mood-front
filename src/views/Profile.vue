@@ -170,7 +170,7 @@
             </div>
             <div class="stat-info">
               <div class="stat-label">总记录数</div>
-              <div class="stat-value">0</div>
+              <div class="stat-value">{{ statistics.totalRecords }}</div>
             </div>
           </div>
         </el-col>
@@ -181,7 +181,7 @@
             </div>
             <div class="stat-info">
               <div class="stat-label">连续天数</div>
-              <div class="stat-value">0</div>
+              <div class="stat-value">{{ statistics.continuousDays }}</div>
             </div>
           </div>
         </el-col>
@@ -192,7 +192,7 @@
             </div>
             <div class="stat-info">
               <div class="stat-label">分享数</div>
-              <div class="stat-value">0</div>
+              <div class="stat-value">{{ statistics.shareCount }}</div>
             </div>
           </div>
         </el-col>
@@ -205,6 +205,7 @@
 import { ref, computed, onMounted } from 'vue'
 import { useUserStore } from '@/stores/user'
 import { updateCurrentUser } from '@/api/auth'
+import { getMoodStatistics } from '@/api/mood'
 import { ElMessage } from 'element-plus'
 import dayjs from 'dayjs'
 
@@ -215,6 +216,13 @@ const isEditing = ref(false)
 const saving = ref(false)
 const uploading = ref(false)
 const formRef = ref(null)
+
+// 统计数据
+const statistics = ref({
+  totalRecords: 0,
+  continuousDays: 0,
+  shareCount: 0
+})
 
 // 上传配置
 const uploadUrl = import.meta.env.VITE_APP_BASE_API + '/files/upload'
@@ -241,7 +249,23 @@ onMounted(async () => {
   if (!userInfo.value) {
     await userStore.getUserInfo()
   }
+  
+  // 加载统计数据
+  await loadStatistics()
 })
+
+const loadStatistics = async () => {
+  try {
+    const data = await getMoodStatistics()
+    statistics.value = {
+      totalRecords: data.totalRecords || 0,
+      continuousDays: data.continuousDays || 0,
+      shareCount: data.shareCount || 0
+    }
+  } catch (error) {
+    console.error('加载统计数据失败', error)
+  }
+}
 
 const formatDate = (date) => {
   return date ? dayjs(date).format('YYYY-MM-DD HH:mm:ss') : '-'
