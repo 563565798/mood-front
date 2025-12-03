@@ -43,6 +43,17 @@ export function updateCurrentUser(data) {
   })
 }
 
+/**
+ * 重置密码
+ */
+export function resetPassword(data) {
+  return request({
+    url: '/auth/reset-password',
+    method: 'post',
+    data
+  })
+}
+
 
 
 

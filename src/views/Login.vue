@@ -49,9 +49,70 @@
           <el-link type="primary" @click="$router.push('/register')">
             立即注册
           </el-link>
+          <el-divider direction="vertical" />
+          <el-link type="info" @click="showResetDialog = true">
+            忘记密码?
+          </el-link>
         </div>
       </el-form>
     </div>
+
+    <!-- 重置密码对话框 -->
+    <el-dialog
+      v-model="showResetDialog"
+      title="重置密码"
+      width="500px"
+    >
+      <el-form
+        ref="resetFormRef"
+        :model="resetForm"
+        :rules="resetRules"
+        label-width="80px"
+      >
+        <el-form-item label="用户名" prop="username">
+          <el-input
+            v-model="resetForm.username"
+            placeholder="请输入用户名"
+            :prefix-icon="User"
+          />
+        </el-form-item>
+        
+        <el-form-item label="邮箱" prop="email">
+          <el-input
+            v-model="resetForm.email"
+            placeholder="请输入注册时的邮箱"
+            :prefix-icon="Message"
+          />
+        </el-form-item>
+        
+        <el-form-item label="新密码" prop="newPassword">
+          <el-input
+            v-model="resetForm.newPassword"
+            type="password"
+            placeholder="请输入新密码(至少6位)"
+            :prefix-icon="Lock"
+            show-password
+          />
+        </el-form-item>
+        
+        <el-form-item label="确认密码" prop="confirmPassword">
+          <el-input
+            v-model="resetForm.confirmPassword"
+            type="password"
+            placeholder="请再次输入新密码"
+            :prefix-icon="Lock"
+            show-password
+          />
+        </el-form-item>
+      </el-form>
+      
+      <template #footer>
+        <el-button @click="showResetDialog = false">取消</el-button>
+        <el-button type="primary" :loading="resetting" @click="handleResetPassword">
+          确认重置
+        </el-button>
+      </template>
+    </el-dialog>
   </div>
 </template>
 
@@ -95,6 +156,72 @@ const handleLogin = async () => {
         console.error('登录失败', error)
       } finally {
         loading.value = false
+      }
+    }
+  })
+}
+
+
+// 重置密码相关逻辑
+import { resetPassword } from '@/api/auth'
+import { Message } from '@element-plus/icons-vue'
+
+const showResetDialog = ref(false)
+const resetFormRef = ref(null)
+const resetting = ref(false)
+
+const resetForm = ref({
+  username: '',
+  email: '',
+  newPassword: '',
+  confirmPassword: ''
+})
+
+const validateConfirmPassword = (rule, value, callback) => {
+  if (value !== resetForm.value.newPassword) {
+    callback(new Error('两次输入的密码不一致'))
+  } else {
+    callback()
+  }
+}
+
+const resetRules = {
+  username: [
+    { required: true, message: '请输入用户名', trigger: 'blur' }
+  ],
+  email: [
+    { required: true, message: '请输入邮箱', trigger: 'blur' },
+    { type: 'email', message: '邮箱格式不正确', trigger: 'blur' }
+  ],
+  newPassword: [
+    { required: true, message: '请输入新密码', trigger: 'blur' },
+    { pattern: /^(?=.*[a-zA-Z])(?=.*\d).{6,20}$/, message: '密码必须包含字母和数字，长度6-20位', trigger: 'blur' }
+  ],
+  confirmPassword: [
+    { required: true, message: '请再次输入密码', trigger: 'blur' },
+    { validator: validateConfirmPassword, trigger: 'blur' }
+  ]
+}
+
+const handleResetPassword = async () => {
+  await resetFormRef.value.validate(async (valid) => {
+    if (valid) {
+      resetting.value = true
+      try {
+        await resetPassword(resetForm.value)
+        ElMessage.success('密码重置成功,请使用新密码登录')
+        showResetDialog.value = false
+        // 重置表单
+        resetForm.value = {
+          username: '',
+          email: '',
+          newPassword: '',
+          confirmPassword: ''
+        }
+      } catch (error) {
+        console.error('密码重置失败', error)
+      } finally {
+        resetting.value = false
       }
     }
   })

@@ -25,7 +25,7 @@
         <el-form-item prop="email">
           <el-input
             v-model="registerForm.email"
-            placeholder="邮箱（选填）"
+            placeholder="邮箱"
             size="large"
             :prefix-icon="Message"
           />
@@ -119,6 +119,7 @@ const rules = {
     { pattern: /^[a-zA-Z0-9_]{4,16}$/, message: '用户名必须是4-16位字母、数字或下划线', trigger: 'blur' }
   ],
   email: [
+    { required: true, message: '请输入邮箱', trigger: 'blur' },
     { type: 'email', message: '请输入正确的邮箱地址', trigger: 'blur' }
   ],
   password: [
