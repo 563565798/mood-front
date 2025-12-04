@@ -95,6 +95,7 @@
             v-model="form.recordDate"
             type="date"
             placeholder="选择日期"
+            :disabled-date="disabledDate"
             style="width: 200px; margin-right: 10px"
           />
           <el-time-picker
@@ -113,7 +114,6 @@
       </el-form>
     </el-card>
 
-    <!-- 编辑记录弹窗 -->
     <el-dialog
       v-model="editDialogVisible"
       title="编辑情绪记录"
@@ -206,6 +206,7 @@
             v-model="editForm.recordDate"
             type="date"
             placeholder="选择日期"
+            :disabled-date="disabledDate"
             style="width: 200px; margin-right: 10px"
           />
           <el-time-picker
@@ -222,6 +223,34 @@
           <el-button type="primary" @click="submitEdit" :loading="editSubmitting">
             保存修改
           </el-button>
+        </span>
+      </template>
+    </el-dialog>
+
+    <!-- 情绪预警弹窗 -->
+    <el-dialog
+      v-model="warningDialogVisible"
+      title="温馨提示"
+      width="400px"
+      center
+      align-center
+      append-to-body
+    >
+      <div class="warning-content">
+        <div class="warning-header">
+          <el-icon class="warning-icon" color="#E6A23C" :size="48"><WarningFilled /></el-icon>
+        </div>
+        <p class="warning-message">{{ warningData.message }}</p>
+        <div class="warning-suggestions" v-if="warningData.suggestions && warningData.suggestions.length">
+          <div v-for="(item, index) in warningData.suggestions" :key="index" class="suggestion-item">
+            <el-icon color="#409EFF"><Sunny /></el-icon>
+            <span>{{ item }}</span>
+          </div>
+        </div>
+      </div>
+      <template #footer>
+        <span class="dialog-footer">
+          <el-button type="primary" @click="warningDialogVisible = false" round>收到建议</el-button>
         </span>
       </template>
     </el-dialog>
@@ -323,6 +352,8 @@ const loading = ref(false)
 const submitting = ref(false)
 const editSubmitting = ref(false)
 const editDialogVisible = ref(false)
+const warningDialogVisible = ref(false)
+const warningData = ref({})
 const editingRecordId = ref(null)
 
 const commonTags = ref(['工作', '学习', '家庭', '朋友', '恋爱', '运动', '睡眠', '饮食', '娱乐', '旅行'])
@@ -364,6 +395,26 @@ const rules = {
   intensity: [{ required: true, message: '请选择情绪强度', trigger: 'change' }]
 }
 
+const disabledDate = (time) => {
+  return time.getTime() > Date.now()
+}
+
+const validateTime = (date, time) => {
+  const now = new Date()
+  const recordDateTime = new Date(date)
+  const timeDate = new Date(time)
+  
+  recordDateTime.setHours(timeDate.getHours())
+  recordDateTime.setMinutes(timeDate.getMinutes())
+  recordDateTime.setSeconds(timeDate.getSeconds())
+  
+  if (recordDateTime > now) {
+    ElMessage.warning('记录时间不能超过当前时间')
+    return false
+  }
+  return true
+}
+
 onMounted(async () => {
   await loadMoodTypes()
   await loadRecords()
@@ -397,6 +448,11 @@ const loadRecords = async () => {
 const submitForm = async () => {
   await formRef.value.validate(async (valid) => {
     if (valid) {
+      // 验证时间
+      if (!validateTime(form.value.recordDate, form.value.recordTime)) {
+        return
+      }
+
       submitting.value = true
       try {
         const submitData = {
@@ -406,10 +462,16 @@ const submitForm = async () => {
           recordTime: dayjs(form.value.recordTime).format('HH:mm:ss')
         }
         
-        await createMoodRecord(submitData)
+        const warning = await createMoodRecord(submitData)
         ElMessage.success('记录成功')
         resetForm()
         await loadRecords()
+        
+        // 处理情绪预警
+        if (warning && warning.hasWarning) {
+          warningData.value = warning
+          warningDialogVisible.value = true
+        }
       } catch (error) {
         console.error('创建记录失败', error)
       } finally {
@@ -468,6 +530,11 @@ const editRecord = (record) => {
 const submitEdit = async () => {
   await editFormRef.value.validate(async (valid) => {
     if (valid) {
+      // 验证时间
+      if (!validateTime(editForm.value.recordDate, editForm.value.recordTime)) {
+        return
+      }
+
       editSubmitting.value = true
       try {
         const submitData = {
@@ -573,6 +640,42 @@ const deleteRecord = async (id) => {
 
 .mood-icon-table {
   font-size: 24px;
+}
+
+.warning-content {
+  text-align: center;
+  padding: 10px 0;
+}
+
+.warning-header {
+  margin-bottom: 15px;
+}
+
+.warning-message {
+  font-size: 16px;
+  color: #303133;
+  margin-bottom: 20px;
+  line-height: 1.5;
+}
+
+.warning-suggestions {
+  background-color: #fdf6ec;
+  border-radius: 8px;
+  padding: 15px;
+  text-align: left;
+}
+
+.suggestion-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 10px;
+  color: #606266;
+  font-size: 14px;
+}
+
+.suggestion-item:last-child {
+  margin-bottom: 0;
 }
 </style>
 
