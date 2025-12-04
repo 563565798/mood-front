@@ -74,6 +74,18 @@ export function getMoodStatistics(params) {
   })
 }
 
+/**
+ * 获取心情总结
+ */
+export function getMoodSummary(params) {
+  return request({
+    url: '/mood-records/summary',
+    method: 'get',
+    params
+  })
+}
+
+
 
 
 

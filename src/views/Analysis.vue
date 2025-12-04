@@ -10,17 +10,50 @@
             range-separator="至"
             start-placeholder="开始日期"
             end-placeholder="结束日期"
-            @change="loadStatistics"
+            :disabled-date="disabledDate"
+            @calendar-change="onCalendarChange"
+            @change="handleDateChange"
           />
         </el-form-item>
         <el-form-item>
           <el-button-group>
+            <el-button @click="setDateRange(3)">最近3天</el-button>
             <el-button @click="setDateRange(7)">最近7天</el-button>
             <el-button @click="setDateRange(30)">最近30天</el-button>
-            <el-button @click="setDateRange(90)">最近90天</el-button>
           </el-button-group>
         </el-form-item>
       </el-form>
+    </el-card>
+
+    <!-- 心情总结 -->
+    <el-card shadow="hover" class="summary-card" v-if="moodSummary">
+      <template #header>
+        <div class="card-header">
+          <el-icon><DataAnalysis /></el-icon>
+          <span>心情总结</span>
+        </div>
+      </template>
+      <div class="summary-content">
+        <div class="summary-text">{{ moodSummary.summaryText }}</div>
+        <div class="summary-stats">
+          <div class="stat-item">
+            <div class="stat-label">记录次数</div>
+            <div class="stat-value">{{ moodSummary.recordCount }}</div>
+          </div>
+          <div class="stat-item">
+            <div class="stat-label">主导情绪</div>
+            <div class="stat-value">{{ moodSummary.dominantMood }}</div>
+          </div>
+          <div class="stat-item">
+            <div class="stat-label">平均强度</div>
+            <div class="stat-value">{{ moodSummary.avgIntensity }}</div>
+          </div>
+          <div class="stat-item">
+            <div class="stat-label">关键词</div>
+            <div class="stat-value">{{ moodSummary.keyword }}</div>
+          </div>
+        </div>
+      </div>
     </el-card>
 
     <!-- 图表展示 -->
@@ -95,14 +128,18 @@
 
 <script setup>
 import { ref, onMounted, nextTick } from 'vue'
-import { getMoodStatistics } from '@/api/mood'
+import { getMoodStatistics, getMoodSummary } from '@/api/mood'
 import * as echarts from 'echarts'
 import dayjs from 'dayjs'
+import { ElMessage } from 'element-plus'
 
 const dateRange = ref([
   dayjs().subtract(30, 'day').toDate(),
   new Date()
 ])
+
+const moodSummary = ref(null)
+const pickDate = ref(null)
 
 const trendChartRef = ref(null)
 const distributionChartRef = ref(null)
@@ -120,6 +157,7 @@ onMounted(async () => {
   await nextTick()
   initCharts()
   await loadStatistics()
+  await loadSummary()
 })
 
 const initCharts = () => {
@@ -139,6 +177,18 @@ const initCharts = () => {
   })
 }
 
+const loadSummary = async () => {
+  try {
+    const params = {
+      startDate: dayjs(dateRange.value[0]).format('YYYY-MM-DD'),
+      endDate: dayjs(dateRange.value[1]).format('YYYY-MM-DD')
+    }
+    moodSummary.value = await getMoodSummary(params)
+  } catch (error) {
+    console.error('加载总结数据失败', error)
+  }
+}
+
 const loadStatistics = async () => {
   try {
     const params = {
@@ -156,6 +206,32 @@ const loadStatistics = async () => {
   } catch (error) {
     console.error('加载统计数据失败', error)
   }
+}
+
+const onCalendarChange = (dates) => {
+  if (dates.length === 1) {
+    pickDate.value = dates[0]
+  } else {
+    pickDate.value = null
+  }
+}
+
+const disabledDate = (time) => {
+  // 限制不能选择未来时间
+  if (time.getTime() > Date.now()) {
+    return true
+  }
+  // 限制选择范围不超过30天
+  if (pickDate.value) {
+    const diff = time.getTime() - pickDate.value.getTime()
+    return Math.abs(diff) > 30 * 24 * 60 * 60 * 1000
+  }
+  return false
+}
+
+const handleDateChange = () => {
+  loadStatistics()
+  loadSummary()
 }
 
 const renderTrendChart = (data) => {
@@ -353,6 +429,7 @@ const setDateRange = (days) => {
     new Date()
   ]
   loadStatistics()
+  loadSummary()
 }
 </script>
 
@@ -365,6 +442,46 @@ const setDateRange = (days) => {
 
 .filter-card {
   margin-bottom: 20px;
+}
+
+.summary-card {
+  margin-bottom: 20px;
+}
+
+.summary-content {
+  padding: 10px;
+}
+
+.summary-text {
+  font-size: 16px;
+  color: #303133;
+  margin-bottom: 20px;
+  line-height: 1.6;
+}
+
+.summary-stats {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 20px;
+}
+
+.stat-item {
+  text-align: center;
+  padding: 15px;
+  background-color: #f5f7fa;
+  border-radius: 8px;
+}
+
+.stat-label {
+  font-size: 14px;
+  color: #909399;
+  margin-bottom: 8px;
+}
+
+.stat-value {
+  font-size: 20px;
+  font-weight: bold;
+  color: #409eff;
 }
 
 .chart-card {
