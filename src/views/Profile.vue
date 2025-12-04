@@ -8,14 +8,16 @@
             <el-icon><User /></el-icon>
             <span>个人信息</span>
           </div>
-          <el-button 
-            v-if="!isEditing" 
-            type="primary" 
-            @click="startEdit"
-          >
-            <el-icon><Edit /></el-icon>
-            编辑资料
-          </el-button>
+          <div v-if="!isEditing" class="header-actions">
+            <el-button type="warning" @click="openChangePassword">
+              <el-icon><Key /></el-icon>
+              修改密码
+            </el-button>
+            <el-button type="primary" @click="startEdit">
+              <el-icon><Edit /></el-icon>
+              编辑资料
+            </el-button>
+          </div>
         </div>
       </template>
 
@@ -198,17 +200,66 @@
         </el-col>
       </el-row>
     </el-card>
+    <!-- 修改密码弹窗 -->
+    <el-dialog
+      v-model="passwordVisible"
+      title="修改密码"
+      width="400px"
+      destroy-on-close
+    >
+      <el-form
+        ref="passwordFormRef"
+        :model="passwordForm"
+        :rules="passwordRules"
+        label-width="100px"
+      >
+        <el-form-item label="原密码" prop="oldPassword">
+          <el-input
+            v-model="passwordForm.oldPassword"
+            type="password"
+            show-password
+            placeholder="请输入原密码"
+          />
+        </el-form-item>
+        <el-form-item label="新密码" prop="newPassword">
+          <el-input
+            v-model="passwordForm.newPassword"
+            type="password"
+            show-password
+            placeholder="请输入新密码"
+          />
+        </el-form-item>
+        <el-form-item label="确认新密码" prop="confirmNewPassword">
+          <el-input
+            v-model="passwordForm.confirmNewPassword"
+            type="password"
+            show-password
+            placeholder="请再次输入新密码"
+          />
+        </el-form-item>
+      </el-form>
+      <template #footer>
+        <span class="dialog-footer">
+          <el-button @click="passwordVisible = false">取消</el-button>
+          <el-button type="primary" @click="submitChangePassword" :loading="passwordLoading">
+            确认修改
+          </el-button>
+        </span>
+      </template>
+    </el-dialog>
   </div>
 </template>
 
 <script setup>
 import { ref, computed, onMounted } from 'vue'
 import { useUserStore } from '@/stores/user'
-import { updateCurrentUser } from '@/api/auth'
+import { updateCurrentUser, changePassword } from '@/api/auth'
 import { getMoodStatistics } from '@/api/mood'
 import { ElMessage } from 'element-plus'
+import { useRouter } from 'vue-router'
 import dayjs from 'dayjs'
 
+const router = useRouter()
 const userStore = useUserStore()
 const userInfo = computed(() => userStore.userInfo)
 
@@ -216,6 +267,86 @@ const isEditing = ref(false)
 const saving = ref(false)
 const uploading = ref(false)
 const formRef = ref(null)
+
+// 修改密码相关
+const passwordVisible = ref(false)
+const passwordFormRef = ref(null)
+const passwordLoading = ref(false)
+const passwordForm = ref({
+  oldPassword: '',
+  newPassword: '',
+  confirmNewPassword: ''
+})
+
+const validatePass = (rule, value, callback) => {
+  if (value === '') {
+    callback(new Error('请输入密码'))
+  } else {
+    if (passwordForm.value.confirmNewPassword !== '') {
+      if (passwordFormRef.value) {
+        passwordFormRef.value.validateField('confirmNewPassword')
+      }
+    }
+    callback()
+  }
+}
+
+const validatePass2 = (rule, value, callback) => {
+  if (value === '') {
+    callback(new Error('请再次输入密码'))
+  } else if (value !== passwordForm.value.newPassword) {
+    callback(new Error('两次输入密码不一致!'))
+  } else {
+    callback()
+  }
+}
+
+const passwordRules = {
+  oldPassword: [
+    { required: true, message: '请输入原密码', trigger: 'blur' }
+  ],
+  newPassword: [
+    { required: true, message: '请输入新密码', trigger: 'blur' },
+    { pattern: /^(?=.*[a-zA-Z])(?=.*\d).{6,20}$/, message: '密码必须包含字母和数字，长度6-20位', trigger: 'blur' },
+    { validator: validatePass, trigger: 'blur' }
+  ],
+  confirmNewPassword: [
+    { required: true, message: '请再次输入新密码', trigger: 'blur' },
+    { validator: validatePass2, trigger: 'blur' }
+  ]
+}
+
+const openChangePassword = () => {
+  passwordForm.value = {
+    oldPassword: '',
+    newPassword: '',
+    confirmNewPassword: ''
+  }
+  passwordVisible.value = true
+}
+
+const submitChangePassword = async () => {
+  if (!passwordFormRef.value) return
+  
+  await passwordFormRef.value.validate(async (valid) => {
+    if (valid) {
+      passwordLoading.value = true
+      try {
+        await changePassword(passwordForm.value)
+        ElMessage.success('密码修改成功，请重新登录')
+        passwordVisible.value = false
+        
+        // Logout
+        userStore.logout()
+        router.push('/login')
+      } catch (error) {
+        console.error('修改密码失败', error)
+      } finally {
+        passwordLoading.value = false
+      }
+    }
+  })
+}
 
 // 统计数据
 const statistics = ref({
@@ -377,6 +508,11 @@ const handleAvatarError = () => {
   display: flex;
   align-items: center;
   gap: 8px;
+}
+
+.header-actions {
+  display: flex;
+  gap: 10px;
 }
 
 .profile-content {
