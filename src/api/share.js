@@ -42,6 +42,33 @@ export function toggleLike(id) {
   })
 }
 
+/**
+ * 获取评论列表
+ */
+export function getShareComments(shareId) {
+  return request({
+    url: `/share/comment/${shareId}`,
+    method: 'get'
+  })
+}
 
+/**
+ * 发表评论
+ */
+export function addShareComment(data) {
+  return request({
+    url: '/share/comment',
+    method: 'post',
+    data
+  })
+}
 
-
+/**
+ * 删除评论
+ */
+export function deleteShareComment(id) {
+  return request({
+    url: `/share/comment/${id}`,
+    method: 'delete'
+  })
+}

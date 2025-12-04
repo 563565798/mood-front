@@ -70,6 +70,16 @@
                 <span class="time">{{ formatTime(share.createdAt) }}</span>
               </div>
             </div>
+            <!-- 作者可以删除分享 -->
+            <el-button 
+              v-if="share.isOwner" 
+              type="danger" 
+              link 
+              size="small"
+              @click="handleDeleteShare(share)"
+            >
+              <el-icon><Delete /></el-icon>
+            </el-button>
           </div>
 
           <div class="share-content">
@@ -87,7 +97,7 @@
                 {{ share.likeCount || 0 }}
               </el-button>
 
-              <el-button link>
+              <el-button link @click="openComments(share)">
                 <el-icon><ChatDotRound /></el-icon>
                 {{ share.commentCount || 0 }}
               </el-button>
@@ -107,14 +117,85 @@
         style="margin-top: 20px; text-align: center"
       />
     </el-card>
+
+    <!-- 评论弹窗 -->
+    <el-dialog
+      v-model="commentVisible"
+      title="评论详情"
+      width="600px"
+      destroy-on-close
+    >
+      <div class="comment-container" v-loading="commentLoading">
+        <!-- 评论列表 -->
+        <div class="comment-list" v-if="comments.length > 0">
+          <div v-for="comment in comments" :key="comment.id" class="comment-item">
+            <div class="comment-header">
+              <span class="comment-user">
+                {{ comment.anonymousName }}
+                <el-tag v-if="comment.isOwner" size="small" type="warning" effect="plain">作者</el-tag>
+              </span>
+              <span class="comment-time">{{ formatTime(comment.createdAt) }}</span>
+            </div>
+            
+            <div class="comment-content">
+              <span v-if="comment.parentId" class="reply-target">回复 @{{ comment.replyToName }}: </span>
+              {{ comment.content }}
+            </div>
+            
+            <div class="comment-actions">
+              <el-button link type="primary" size="small" @click="replyTo(comment)">回复</el-button>
+              <el-button 
+                v-if="comment.canDelete" 
+                link 
+                type="danger" 
+                size="small" 
+                @click="handleDeleteComment(comment.id)"
+              >删除</el-button>
+            </div>
+          </div>
+        </div>
+        <el-empty v-else description="暂无评论，快来抢沙发~" :image-size="100" />
+        
+        <!-- 发表评论 -->
+        <div class="comment-form">
+          <div v-if="replyTarget" class="reply-preview">
+            <el-tag closable @close="cancelReply" type="info">
+              回复 @{{ replyTarget.anonymousName }}
+            </el-tag>
+          </div>
+          <div class="input-area">
+            <el-input
+              v-model="commentContent"
+              type="textarea"
+              :rows="2"
+              :placeholder="replyTarget ? `回复 @${replyTarget.anonymousName}...` : '写下你的评论...'"
+              maxlength="300"
+              show-word-limit
+            />
+            <el-button type="primary" @click="submitComment" :loading="commentSubmitting">
+              发送
+            </el-button>
+          </div>
+        </div>
+      </div>
+    </el-dialog>
   </div>
 </template>
 
 <script setup>
 import { ref, onMounted } from 'vue'
 import { getMoodTypes } from '@/api/mood'
-import { createMoodShare, getMoodSharePage, toggleLike as apiToggleLike } from '@/api/share'
-import { ElMessage } from 'element-plus'
+import { 
+  createMoodShare, 
+  getMoodSharePage, 
+  toggleLike as apiToggleLike, 
+  deleteMoodShare,
+  getShareComments,
+  addShareComment,
+  deleteShareComment
+} from '@/api/share'
+import { ElMessage, ElMessageBox } from 'element-plus'
+import { ChatDotSquare, Message, Refresh, Star, ChatDotRound, Delete } from '@element-plus/icons-vue'
 import dayjs from 'dayjs'
 import relativeTime from 'dayjs/plugin/relativeTime'
 import 'dayjs/locale/zh-cn'
@@ -139,6 +220,15 @@ const pagination = ref({
   pageSize: 20,
   total: 0
 })
+
+// 评论相关
+const commentVisible = ref(false)
+const commentLoading = ref(false)
+const commentSubmitting = ref(false)
+const comments = ref([])
+const currentShareId = ref(null)
+const commentContent = ref('')
+const replyTarget = ref(null)
 
 const rules = {
   moodTypeId: [{ required: true, message: '请选择情绪', trigger: 'change' }],
@@ -218,6 +308,111 @@ const toggleLike = async (share) => {
   }
 }
 
+const handleDeleteShare = (share) => {
+  ElMessageBox.confirm(
+    '确定要删除这条分享吗？此操作不可恢复。',
+    '提示',
+    {
+      confirmButtonText: '确定',
+      cancelButtonText: '取消',
+      type: 'warning',
+    }
+  ).then(async () => {
+    try {
+      await deleteMoodShare(share.id)
+      ElMessage.success('删除成功')
+      loadShares()
+    } catch (error) {
+      console.error('删除分享失败', error)
+    }
+  }).catch(() => {})
+}
+
+// 评论功能
+const openComments = async (share) => {
+  currentShareId.value = share.id
+  commentVisible.value = true
+  replyTarget.value = null
+  commentContent.value = ''
+  await loadComments(share.id)
+}
+
+const loadComments = async (shareId) => {
+  commentLoading.value = true
+  try {
+    comments.value = await getShareComments(shareId)
+  } catch (error) {
+    console.error('加载评论失败', error)
+  } finally {
+    commentLoading.value = false
+  }
+}
+
+const replyTo = (comment) => {
+  replyTarget.value = comment
+  // 聚焦输入框 (simple implementation, usually via ref)
+}
+
+const cancelReply = () => {
+  replyTarget.value = null
+}
+
+const submitComment = async () => {
+  if (!commentContent.value.trim()) {
+    ElMessage.warning('请输入评论内容')
+    return
+  }
+  
+  commentSubmitting.value = true
+  try {
+    await addShareComment({
+      shareId: currentShareId.value,
+      content: commentContent.value,
+      parentId: replyTarget.value ? replyTarget.value.id : null
+    })
+    ElMessage.success('评论成功')
+    commentContent.value = ''
+    replyTarget.value = null
+    
+    // 刷新评论和分享列表（更新评论数）
+    await loadComments(currentShareId.value)
+    // Update comment count in list locally
+    const share = shares.value.find(s => s.id === currentShareId.value)
+    if (share) {
+      share.commentCount = (share.commentCount || 0) + 1
+    }
+  } catch (error) {
+    console.error('发表评论失败', error)
+  } finally {
+    commentSubmitting.value = false
+  }
+}
+
+const handleDeleteComment = (commentId) => {
+  ElMessageBox.confirm(
+    '确定要删除这条评论吗？',
+    '提示',
+    {
+      confirmButtonText: '确定',
+      cancelButtonText: '取消',
+      type: 'warning',
+    }
+  ).then(async () => {
+    try {
+      await deleteShareComment(commentId)
+      ElMessage.success('删除成功')
+      await loadComments(currentShareId.value)
+      // Update comment count in list locally
+      const share = shares.value.find(s => s.id === currentShareId.value)
+      if (share && share.commentCount > 0) {
+        share.commentCount--
+      }
+    } catch (error) {
+      console.error('删除评论失败', error)
+    }
+  }).catch(() => {})
+}
+
 const formatTime = (time) => {
   return dayjs(time).fromNow()
 }
@@ -249,74 +444,74 @@ const formatTime = (time) => {
 
 .mood-selector-mini {
   display: flex;
-  gap: 10px;
   flex-wrap: wrap;
-  margin-bottom: 15px;
+  gap: 10px;
 }
 
 .mood-option-mini {
-  width: 50px;
-  height: 50px;
+  width: 40px;
+  height: 40px;
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 28px;
-  border: 2px solid #e4e7ed;
-  border-radius: 8px;
+  border-radius: 50%;
+  background-color: #f5f7fa;
   cursor: pointer;
+  font-size: 20px;
   transition: all 0.3s;
 }
 
 .mood-option-mini:hover {
-  border-color: #409eff;
   transform: scale(1.1);
 }
 
 .mood-option-mini.active {
-  border-color: #409eff;
-  background: #ecf5ff;
+  background-color: #e6f7ff;
+  border: 2px solid #409eff;
 }
 
 .share-list {
-  min-height: 400px;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
 }
 
 .share-item {
-  padding: 20px;
   border-bottom: 1px solid #ebeef5;
-  transition: background-color 0.3s;
+  padding-bottom: 20px;
 }
 
-.share-item:hover {
-  background-color: #f5f7fa;
+.share-item:last-child {
+  border-bottom: none;
+  padding-bottom: 0;
 }
 
 .share-header {
   display: flex;
   justify-content: space-between;
-  align-items: center;
-  margin-bottom: 12px;
+  align-items: flex-start;
+  margin-bottom: 10px;
 }
 
 .share-user {
   display: flex;
   align-items: center;
-  gap: 12px;
+  gap: 10px;
 }
 
 .mood-icon-large {
-  font-size: 36px;
+  font-size: 32px;
 }
 
 .user-info {
   display: flex;
   flex-direction: column;
-  gap: 4px;
 }
 
 .username {
   font-weight: bold;
-  color: #2c3e50;
+  font-size: 14px;
+  color: #303133;
 }
 
 .time {
@@ -325,25 +520,91 @@ const formatTime = (time) => {
 }
 
 .share-content {
-  padding: 15px 0;
-  line-height: 1.8;
+  font-size: 14px;
   color: #606266;
-  font-size: 15px;
-}
-
-.share-footer {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding-top: 10px;
+  line-height: 1.6;
+  margin-bottom: 15px;
+  white-space: pre-wrap;
 }
 
 .share-actions {
   display: flex;
-  gap: 15px;
+  gap: 20px;
+}
+
+/* 评论相关样式 */
+.comment-container {
+  max-height: 500px;
+  display: flex;
+  flex-direction: column;
+}
+
+.comment-list {
+  flex: 1;
+  overflow-y: auto;
+  margin-bottom: 20px;
+  max-height: 350px;
+}
+
+.comment-item {
+  padding: 10px 0;
+  border-bottom: 1px solid #f0f2f5;
+}
+
+.comment-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 5px;
+}
+
+.comment-user {
+  font-weight: bold;
+  font-size: 13px;
+  color: #333;
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.comment-time {
+  font-size: 12px;
+  color: #999;
+}
+
+.comment-content {
+  font-size: 14px;
+  color: #666;
+  margin-bottom: 5px;
+  line-height: 1.5;
+}
+
+.reply-target {
+  color: #409eff;
+  margin-right: 5px;
+}
+
+.comment-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+}
+
+.comment-form {
+  border-top: 1px solid #eee;
+  padding-top: 15px;
+}
+
+.reply-preview {
+  margin-bottom: 10px;
+}
+
+.input-area {
+  display: flex;
+  gap: 10px;
+}
+
+.input-area .el-input {
+  flex: 1;
 }
 </style>
-
-
-
-
