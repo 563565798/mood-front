@@ -67,8 +67,7 @@
       <div v-loading="loading" class="share-list">
         <div v-for="share in shares" :key="share.id" class="share-item">
           <div class="share-header">
-            <div class="share-user">
-              <span class="mood-icon-large">{{ share.moodType?.icon }}</span>
+            <div class="share-user-left">
               <div class="user-info" v-if="share.isAnonymous || !share.nickname">
                 <!-- 匿名用户 -->
                 <span class="username">{{ share.anonymousName }}</span>
@@ -84,17 +83,24 @@
                   <span class="time">{{ formatTime(share.createdAt) }}</span>
                 </div>
               </div>
+              
+              <!-- 心情表情在用户信息右侧 -->
+              <span class="mood-icon-inline">{{ share.moodType?.icon }}</span>
             </div>
-            <!-- 作者可以删除分享 -->
-            <el-button 
-              v-if="share.isOwner" 
-              type="danger" 
-              link 
-              size="small"
-              @click="handleDeleteShare(share)"
-            >
-              <el-icon><Delete /></el-icon>
-            </el-button>
+            
+            <div class="share-right-content">
+              <!-- 作者可以删除分享 -->
+              <el-button 
+                v-if="share.isOwner" 
+                type="danger" 
+                link 
+                size="small"
+                @click="handleDeleteShare(share)"
+                class="delete-btn"
+              >
+                <el-icon><Delete /></el-icon>
+              </el-button>
+            </div>
           </div>
 
           <div class="share-content">
@@ -599,18 +605,28 @@ const sendMessageToUser = () => {
 .share-header {
   display: flex;
   justify-content: space-between;
-  align-items: flex-start;
-  margin-bottom: 10px;
+  align-items: center;
+  margin-bottom: 15px;
 }
 
-.share-user {
+.share-user-left {
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: 15px;
 }
 
-.mood-icon-large {
+.share-right-content {
+  display: flex;
+  align-items: center;
+}
+
+.delete-btn {
+  margin-left: 5px;
+}
+
+.mood-icon-inline {
   font-size: 32px;
+  line-height: 1;
 }
 
 .user-info {

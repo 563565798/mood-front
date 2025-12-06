@@ -36,7 +36,8 @@
             :min="1"
             :max="10"
             show-stops
-            :marks="{ 1: '1', 5: '5', 10: '10' }"
+            :marks="sliderMarks"
+            class="custom-slider"
           />
         </el-form-item>
 
@@ -147,7 +148,8 @@
             :min="1"
             :max="10"
             show-stops
-            :marks="{ 1: '1', 5: '5', 10: '10' }"
+            :marks="sliderMarks"
+            class="custom-slider"
           />
         </el-form-item>
 
@@ -389,6 +391,36 @@ const pagination = ref({
   pageSize: 10,
   total: 0
 })
+
+const sliderMarks = {
+  1: {
+    style: {
+      color: '#909399',
+      fontWeight: 'bold',
+      fontSize: '24px',
+      marginTop: '5px'
+    },
+    label: '1'
+  },
+  5: {
+    style: {
+      color: '#E6A23C',
+      fontWeight: 'bold',
+      fontSize: '24px',
+      marginTop: '5px'
+    },
+    label: '5'
+  },
+  10: {
+    style: {
+      color: '#F56C6C',
+      fontWeight: 'bold',
+      fontSize: '24px',
+      marginTop: '5px'
+    },
+    label: '10'
+  }
+}
 
 const rules = {
   moodTypeId: [{ required: true, message: '请选择情绪类型', trigger: 'change' }],
@@ -676,6 +708,18 @@ const deleteRecord = async (id) => {
 
 .suggestion-item:last-child {
   margin-bottom: 0;
+}
+
+:deep(.custom-slider) {
+  padding-bottom: 25px;
+}
+
+:deep(.custom-slider .el-slider__bar) {
+  background: linear-gradient(90deg, #909399 0%, #E6A23C 50%, #F56C6C 100%);
+}
+
+:deep(.custom-slider .el-slider__button) {
+  border-color: #E6A23C;
 }
 </style>
 
