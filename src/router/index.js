@@ -48,6 +48,12 @@ const routes = [
         name: 'Profile',
         component: () => import('@/views/Profile.vue'),
         meta: { title: '个人中心', requiresAuth: true }
+      },
+      {
+        path: 'message',
+        name: 'Message',
+        component: () => import('@/views/Message.vue'),
+        meta: { title: '私信', requiresAuth: true }
       }
     ]
   },

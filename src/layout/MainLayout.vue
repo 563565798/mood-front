@@ -29,6 +29,11 @@
           <el-icon><ChatDotSquare /></el-icon>
           <span>心情分享墙</span>
         </el-menu-item>
+        <el-menu-item index="/message">
+          <el-icon><Message /></el-icon>
+          <span>私信</span>
+          <el-badge v-if="unreadCount > 0" :value="unreadCount" class="menu-badge" />
+        </el-menu-item>
         <el-menu-item index="/profile">
           <el-icon><User /></el-icon>
           <span>个人中心</span>
@@ -81,16 +86,19 @@
 import { computed, onMounted } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { useUserStore } from '@/stores/user'
+import { useMessageStore } from '@/stores/message'
 import { ElMessage, ElMessageBox } from 'element-plus'
 
 const router = useRouter()
 const route = useRoute()
 const userStore = useUserStore()
+const messageStore = useMessageStore()
 
 const currentRoute = computed(() => route.path)
 const pageTitle = computed(() => route.meta.title || '情绪记录系统')
 const userInfo = computed(() => userStore.userInfo)
 const isAdmin = computed(() => userStore.isAdmin)
+const unreadCount = computed(() => messageStore.unreadCount)
 
 onMounted(async () => {
   if (!userStore.userInfo) {
@@ -100,6 +108,9 @@ onMounted(async () => {
       console.error('获取用户信息失败', error)
     }
   }
+  messageStore.loadUnreadCount()
+  // 每分钟刷新未读数
+  setInterval(() => messageStore.loadUnreadCount(), 60000)
 })
 
 const handleCommand = async (command) => {
@@ -174,6 +185,10 @@ const handleCommand = async (command) => {
 /* 重置 Element Plus 的默认 padding */
 :deep(.el-main) {
   padding: 0;
+}
+
+.menu-badge {
+  margin-left: 5px;
 }
 </style>
 

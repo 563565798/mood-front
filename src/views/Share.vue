@@ -5,7 +5,7 @@
       <template #header>
         <div class="card-header">
           <el-icon><ChatDotSquare /></el-icon>
-          <span>匿名分享你的心情</span>
+          <span>分享你的心情</span>
         </div>
       </template>
 
@@ -36,14 +36,18 @@
         </el-form-item>
 
         <el-form-item>
-          <el-input
-            v-model="form.anonymousName"
-            placeholder="匿名昵称（选填，不填则随机生成）"
-            style="width: 200px; margin-right: 10px"
-          />
-          <el-button type="primary" @click="submitShare" :loading="submitting">
-            匿名发布
-          </el-button>
+          <div class="publish-options">
+            <el-switch v-model="form.isAnonymous" active-text="匿名发布" inactive-text="" />
+            <el-input
+              v-if="form.isAnonymous"
+              v-model="form.anonymousName"
+              placeholder="匿名昵称（选填，不填则随机生成）"
+              style="width: 200px; margin-left: 10px"
+            />
+            <el-button type="primary" @click="submitShare" :loading="submitting" style="margin-left: auto">
+              发布
+            </el-button>
+          </div>
         </el-form-item>
       </el-form>
     </el-card>
@@ -65,9 +69,20 @@
           <div class="share-header">
             <div class="share-user">
               <span class="mood-icon-large">{{ share.moodType?.icon }}</span>
-              <div class="user-info">
+              <div class="user-info" v-if="share.isAnonymous || !share.nickname">
+                <!-- 匿名用户 -->
                 <span class="username">{{ share.anonymousName }}</span>
                 <span class="time">{{ formatTime(share.createdAt) }}</span>
+              </div>
+              <div class="user-info clickable" v-else @click="showUserProfile(share)">
+                <!-- 实名用户，可点击查看资料 -->
+                <el-avatar :size="36" :src="share.avatar || undefined">
+                  <el-icon><User /></el-icon>
+                </el-avatar>
+                <div class="user-detail">
+                  <span class="nickname">{{ share.nickname }}</span>
+                  <span class="time">{{ formatTime(share.createdAt) }}</span>
+                </div>
               </div>
             </div>
             <!-- 作者可以删除分享 -->
@@ -130,10 +145,19 @@
         <div class="comment-list" v-if="comments.length > 0">
           <div v-for="comment in comments" :key="comment.id" class="comment-item">
             <div class="comment-header">
-              <span class="comment-user">
+              <!-- 匿名评论 -->
+              <span v-if="comment.isAnonymous || !comment.nickname" class="comment-user">
                 {{ comment.anonymousName }}
                 <el-tag v-if="comment.isOwner" size="small" type="warning" effect="plain">作者</el-tag>
               </span>
+              <!-- 实名评论 - 可点击查看资料 -->
+              <div v-else class="comment-user-info clickable" @click="showCommentUserProfile(comment)">
+                <el-avatar :size="28" :src="comment.avatar || undefined">
+                  <el-icon><User /></el-icon>
+                </el-avatar>
+                <span class="comment-nickname">{{ comment.nickname }}</span>
+                <el-tag v-if="comment.isOwner" size="small" type="warning" effect="plain">作者</el-tag>
+              </div>
               <span class="comment-time">{{ formatTime(comment.createdAt) }}</span>
             </div>
             
@@ -160,7 +184,7 @@
         <div class="comment-form">
           <div v-if="replyTarget" class="reply-preview">
             <el-tag closable @close="cancelReply" type="info">
-              回复 @{{ replyTarget.anonymousName }}
+              回复 @{{ replyTarget.nickname || replyTarget.anonymousName }}
             </el-tag>
           </div>
           <div class="input-area">
@@ -168,14 +192,46 @@
               v-model="commentContent"
               type="textarea"
               :rows="2"
-              :placeholder="replyTarget ? `回复 @${replyTarget.anonymousName}...` : '写下你的评论...'"
+              :placeholder="replyTarget ? `回复 @${replyTarget.nickname || replyTarget.anonymousName}...` : '写下你的评论...'"
               maxlength="300"
               show-word-limit
             />
-            <el-button type="primary" @click="submitComment" :loading="commentSubmitting">
-              发送
-            </el-button>
+            <div class="comment-submit-area">
+              <el-switch v-model="commentAnonymous" active-text="匿名" size="small" />
+              <el-button type="primary" @click="submitComment" :loading="commentSubmitting">
+                发送
+              </el-button>
+            </div>
           </div>
+        </div>
+      </div>
+    </el-dialog>
+
+    <!-- 用户资料弹窗 -->
+    <el-dialog v-model="userProfileVisible" title="用户资料" width="400px">
+      <div class="user-profile-card" v-if="selectedUser">
+        <div class="profile-header">
+          <el-avatar :size="80" :src="selectedUser.avatar || undefined">
+            <el-icon :size="40"><User /></el-icon>
+          </el-avatar>
+          <h3>{{ selectedUser.nickname || selectedUser.username }}</h3>
+        </div>
+        <el-descriptions :column="1" border>
+          <el-descriptions-item label="用户名">{{ selectedUser.username }}</el-descriptions-item>
+          <el-descriptions-item label="性别">
+            {{ selectedUser.gender === 1 ? '男' : selectedUser.gender === 2 ? '女' : '保密' }}
+          </el-descriptions-item>
+          <el-descriptions-item label="生日" v-if="selectedUser.birthday">
+            {{ selectedUser.birthday }}
+          </el-descriptions-item>
+          <el-descriptions-item label="注册时间" v-if="selectedUser.userCreatedAt">
+            {{ formatDate(selectedUser.userCreatedAt) }}
+          </el-descriptions-item>
+        </el-descriptions>
+        <div class="profile-actions">
+          <el-button type="primary" @click="sendMessageToUser">
+            <el-icon><ChatDotSquare /></el-icon>发送私信
+          </el-button>
         </div>
       </div>
     </el-dialog>
@@ -184,6 +240,7 @@
 
 <script setup>
 import { ref, onMounted } from 'vue'
+import { useRouter } from 'vue-router'
 import { getMoodTypes } from '@/api/mood'
 import { 
   createMoodShare, 
@@ -195,13 +252,15 @@ import {
   deleteShareComment
 } from '@/api/share'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import { ChatDotSquare, Message, Refresh, Star, ChatDotRound, Delete } from '@element-plus/icons-vue'
+import { ChatDotSquare, Message, Refresh, Star, ChatDotRound, Delete, User } from '@element-plus/icons-vue'
 import dayjs from 'dayjs'
 import relativeTime from 'dayjs/plugin/relativeTime'
 import 'dayjs/locale/zh-cn'
 
 dayjs.extend(relativeTime)
 dayjs.locale('zh-cn')
+
+const router = useRouter()
 
 const formRef = ref(null)
 const moodTypes = ref([])
@@ -212,7 +271,8 @@ const submitting = ref(false)
 const form = ref({
   moodTypeId: null,
   content: '',
-  anonymousName: ''
+  anonymousName: '',
+  isAnonymous: false
 })
 
 const pagination = ref({
@@ -229,6 +289,11 @@ const comments = ref([])
 const currentShareId = ref(null)
 const commentContent = ref('')
 const replyTarget = ref(null)
+const commentAnonymous = ref(false)
+
+// 用户资料弹窗
+const userProfileVisible = ref(false)
+const selectedUser = ref(null)
 
 const rules = {
   moodTypeId: [{ required: true, message: '请选择情绪', trigger: 'change' }],
@@ -276,7 +341,8 @@ const submitShare = async () => {
         form.value = {
           moodTypeId: null,
           content: '',
-          anonymousName: ''
+          anonymousName: '',
+          isAnonymous: false
         }
         
         // 刷新列表
@@ -368,11 +434,13 @@ const submitComment = async () => {
     await addShareComment({
       shareId: currentShareId.value,
       content: commentContent.value,
-      parentId: replyTarget.value ? replyTarget.value.id : null
+      parentId: replyTarget.value ? replyTarget.value.id : null,
+      isAnonymous: commentAnonymous.value
     })
     ElMessage.success('评论成功')
     commentContent.value = ''
     replyTarget.value = null
+    commentAnonymous.value = false
     
     // 刷新评论和分享列表（更新评论数）
     await loadComments(currentShareId.value)
@@ -415,6 +483,48 @@ const handleDeleteComment = (commentId) => {
 
 const formatTime = (time) => {
   return dayjs(time).fromNow()
+}
+
+const formatDate = (dateStr) => {
+  if (!dateStr) return '-'
+  return dayjs(dateStr).format('YYYY-MM-DD')
+}
+
+// 显示用户资料
+const showUserProfile = (share) => {
+  selectedUser.value = {
+    userId: share.userId,
+    username: share.username,
+    nickname: share.nickname,
+    avatar: share.avatar,
+    gender: share.gender,
+    birthday: share.birthday,
+    userCreatedAt: share.userCreatedAt
+  }
+  userProfileVisible.value = true
+}
+
+// 显示评论用户资料
+const showCommentUserProfile = (comment) => {
+  selectedUser.value = {
+    userId: comment.userId,
+    username: comment.username,
+    nickname: comment.nickname,
+    avatar: comment.avatar,
+    gender: comment.gender,
+    birthday: comment.birthday,
+    userCreatedAt: comment.userCreatedAt
+  }
+  userProfileVisible.value = true
+}
+
+// 发送私信给用户
+const sendMessageToUser = () => {
+  userProfileVisible.value = false
+  router.push({
+    path: '/message',
+    query: { to: selectedUser.value.username }
+  })
 }
 </script>
 
@@ -606,5 +716,83 @@ const formatTime = (time) => {
 
 .input-area .el-input {
   flex: 1;
+}
+
+/* 发布选项 */
+.publish-options {
+  display: flex;
+  align-items: center;
+  width: 100%;
+}
+
+/* 可点击用户信息 */
+.user-info.clickable {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  cursor: pointer;
+  padding: 5px;
+  border-radius: 8px;
+  transition: background-color 0.2s;
+}
+
+.user-info.clickable:hover {
+  background-color: #f5f7fa;
+}
+
+.user-detail {
+  display: flex;
+  flex-direction: column;
+}
+
+.nickname {
+  font-weight: bold;
+  font-size: 14px;
+  color: #409eff;
+}
+
+/* 用户资料卡片 */
+.user-profile-card {
+  text-align: center;
+}
+
+.profile-header {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 20px;
+}
+
+.profile-header h3 {
+  margin: 0;
+  font-size: 18px;
+  color: #303133;
+}
+
+.profile-actions {
+  margin-top: 20px;
+  display: flex;
+  justify-content: center;
+}
+
+/* 评论用户信息 */
+.comment-user-info {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.comment-nickname {
+  font-weight: bold;
+  font-size: 13px;
+  color: #409eff;
+}
+
+.comment-submit-area {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  align-items: flex-end;
 }
 </style>
