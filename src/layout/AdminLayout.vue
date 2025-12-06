@@ -1,41 +1,38 @@
 <template>
-  <el-container class="main-layout">
+  <el-container class="admin-layout">
     <!-- 侧边栏 -->
     <el-aside width="200px" class="sidebar">
       <div class="logo">
-        <el-icon :size="32"><MostlyCloudy /></el-icon>
-        <span>情绪记录</span>
+        <el-icon :size="32"><Setting /></el-icon>
+        <span>管理后台</span>
       </div>
       <el-menu
         :default-active="currentRoute"
         router
-        background-color="#2c3e50"
-        text-color="#ecf0f1"
-        active-text-color="#3498db"
+        background-color="#1e1e2d"
+        text-color="#a2a3b7"
+        active-text-color="#3699ff"
       >
-        <el-menu-item index="/dashboard">
+        <el-menu-item index="/admin/dashboard">
           <el-icon><DataAnalysis /></el-icon>
-          <span>仪表盘</span>
+          <span>数据概览</span>
         </el-menu-item>
-        <el-menu-item index="/record">
-          <el-icon><Edit /></el-icon>
-          <span>情绪记录</span>
-        </el-menu-item>
-        <el-menu-item index="/analysis">
-          <el-icon><TrendCharts /></el-icon>
-          <span>趋势分析</span>
-        </el-menu-item>
-        <el-menu-item index="/share">
-          <el-icon><ChatDotSquare /></el-icon>
-          <span>心情分享墙</span>
-        </el-menu-item>
-        <el-menu-item index="/profile">
+        <el-menu-item index="/admin/users">
           <el-icon><User /></el-icon>
-          <span>个人中心</span>
+          <span>用户管理</span>
         </el-menu-item>
-        <el-menu-item v-if="isAdmin" index="/admin">
-          <el-icon><Setting /></el-icon>
-          <span>管理后台</span>
+        <el-menu-item index="/admin/posts">
+          <el-icon><Document /></el-icon>
+          <span>帖子管理</span>
+        </el-menu-item>
+        <el-menu-item index="/admin/comments">
+          <el-icon><ChatDotRound /></el-icon>
+          <span>评论管理</span>
+        </el-menu-item>
+        <el-divider />
+        <el-menu-item index="/dashboard">
+          <el-icon><Back /></el-icon>
+          <span>返回前台</span>
         </el-menu-item>
       </el-menu>
     </el-aside>
@@ -54,11 +51,12 @@
                 <el-icon><User /></el-icon>
               </el-avatar>
               <span class="username">{{ userInfo?.nickname || userInfo?.username }}</span>
+              <el-tag type="danger" size="small">管理员</el-tag>
             </span>
             <template #dropdown>
               <el-dropdown-menu>
-                <el-dropdown-item command="profile">
-                  <el-icon><User /></el-icon>个人中心
+                <el-dropdown-item command="front">
+                  <el-icon><Back /></el-icon>返回前台
                 </el-dropdown-item>
                 <el-dropdown-item command="logout" divided>
                   <el-icon><SwitchButton /></el-icon>退出登录
@@ -88,9 +86,8 @@ const route = useRoute()
 const userStore = useUserStore()
 
 const currentRoute = computed(() => route.path)
-const pageTitle = computed(() => route.meta.title || '情绪记录系统')
+const pageTitle = computed(() => route.meta.title || '管理后台')
 const userInfo = computed(() => userStore.userInfo)
-const isAdmin = computed(() => userStore.isAdmin)
 
 onMounted(async () => {
   if (!userStore.userInfo) {
@@ -112,20 +109,20 @@ const handleCommand = async (command) => {
     userStore.logout()
     ElMessage.success('退出成功')
     router.push('/login')
-  } else if (command === 'profile') {
-    router.push('/profile')
+  } else if (command === 'front') {
+    router.push('/dashboard')
   }
 }
 </script>
 
 <style scoped>
-.main-layout {
+.admin-layout {
   min-height: 100vh;
 }
 
 .sidebar {
-  background-color: #2c3e50;
-  color: #ecf0f1;
+  background-color: #1e1e2d;
+  color: #a2a3b7;
 }
 
 .logo {
@@ -134,10 +131,10 @@ const handleCommand = async (command) => {
   justify-content: center;
   gap: 10px;
   height: 60px;
-  font-size: 20px;
+  font-size: 18px;
   font-weight: bold;
-  color: #ecf0f1;
-  border-bottom: 1px solid #34495e;
+  color: #fff;
+  border-bottom: 1px solid #2d2d3f;
 }
 
 .header {
@@ -150,7 +147,7 @@ const handleCommand = async (command) => {
 
 .header-left h2 {
   font-size: 20px;
-  color: #2c3e50;
+  color: #1e1e2d;
 }
 
 .user-dropdown {
@@ -161,22 +158,17 @@ const handleCommand = async (command) => {
 }
 
 .username {
-  color: #2c3e50;
+  color: #1e1e2d;
+  margin-right: 8px;
 }
 
 .main-content {
   background: #f5f7fa;
-  padding: 0;
-  width: 100%;
-  overflow-x: hidden;
+  padding: 20px;
 }
 
-/* 重置 Element Plus 的默认 padding */
-:deep(.el-main) {
-  padding: 0;
+.el-divider {
+  margin: 10px 16px;
+  border-color: #2d2d3f;
 }
 </style>
-
-
-
-
