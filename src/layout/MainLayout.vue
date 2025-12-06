@@ -31,8 +31,11 @@
         </el-menu-item>
         <el-menu-item index="/message">
           <el-icon><Message /></el-icon>
-          <span>私信</span>
-          <el-badge v-if="unreadCount > 0" :value="unreadCount" class="menu-badge" />
+          <div style="display: inline-block; position: relative;">
+            <el-badge :value="unreadCount" :hidden="unreadCount === 0" class="menu-badge" type="danger">
+              <span>私信</span>
+            </el-badge>
+          </div>
         </el-menu-item>
         <el-menu-item index="/profile">
           <el-icon><User /></el-icon>
@@ -187,8 +190,11 @@ const handleCommand = async (command) => {
   padding: 0;
 }
 
-.menu-badge {
-  margin-left: 5px;
+.menu-badge :deep(.el-badge__content) {
+  top: 4px;
+  right: -16px;
+  transform: none;
+  border: none;
 }
 </style>
 

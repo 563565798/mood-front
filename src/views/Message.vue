@@ -6,7 +6,7 @@
           <el-radio-group v-model="activeTab" @change="handleTabChange">
             <el-radio-button label="inbox">
               收件箱
-              <el-badge v-if="unreadCount > 0" :value="unreadCount" class="unread-badge" />
+              <el-badge :value="unreadCount" :hidden="unreadCount === 0" class="unread-badge" />
             </el-radio-button>
             <el-radio-button label="outbox">发件箱</el-radio-button>
           </el-radio-group>
@@ -21,7 +21,13 @@
         </div>
       </template>
 
-      <el-table :data="messages" v-loading="loading" stripe>
+      <el-table 
+        :data="messages" 
+        v-loading="loading" 
+        stripe 
+        @row-click="handleRowClick"
+        class="message-table"
+      >
         <el-table-column v-if="activeTab === 'inbox'" label="发送者" width="150">
           <template #default="{ row }">
             <div class="user-info">
@@ -111,6 +117,44 @@
       <template #footer>
         <el-button @click="showSendDialog = false">取消</el-button>
         <el-button type="primary" @click="handleSend" :loading="sending">发送</el-button>
+      </template>
+    </el-dialog>
+
+    <!-- 消息详情对话框 -->
+    <el-dialog v-model="detailDialogVisible" title="消息详情" width="500px">
+      <div v-if="currentMessage" class="message-detail">
+        <div class="detail-header">
+          <div class="user-info-large">
+            <el-avatar :size="50" :src="(activeTab === 'inbox' ? currentMessage.senderAvatar : currentMessage.receiverAvatar) || undefined">
+              <el-icon><User /></el-icon>
+            </el-avatar>
+            <div class="user-meta">
+              <span class="username">{{ activeTab === 'inbox' ? (currentMessage.senderNickname || currentMessage.senderUsername) : (currentMessage.receiverNickname || currentMessage.receiverUsername) }}</span>
+              <span class="time">{{ formatDate(currentMessage.createdAt) }}</span>
+            </div>
+          </div>
+        </div>
+        <div class="detail-content">
+          {{ currentMessage.content }}
+        </div>
+      </div>
+      <template #footer>
+        <el-button @click="detailDialogVisible = false">关闭</el-button>
+        <el-button 
+          v-if="activeTab === 'inbox'" 
+          type="primary" 
+          @click="handleReplyFromDetail"
+        >
+          回复
+        </el-button>
+        <!-- 标记已读按钮（如果是未读） -->
+        <el-button 
+          v-if="activeTab === 'inbox' && currentMessage?.isRead === 0" 
+          type="success" 
+          @click="handleMarkRead(currentMessage)"
+        >
+          标记已读
+        </el-button>
       </template>
     </el-dialog>
   </div>
@@ -237,12 +281,30 @@ onMounted(() => {
   loadMessages()
   messageStore.loadUnreadCount()
   
-  // 从URL参数预填接收者并打开发送对话框
   if (route.query.to) {
     sendForm.value.receiverUsername = route.query.to
     showSendDialog.value = true
   }
 })
+
+// 详情相关
+const detailDialogVisible = ref(false)
+const currentMessage = ref(null)
+
+const handleRowClick = (row) => {
+  currentMessage.value = row
+  detailDialogVisible.value = true
+  
+  // 如果是未读收件箱消息，自动标记已读
+  if (activeTab.value === 'inbox' && row.isRead === 0) {
+    handleMarkRead(row)
+  }
+}
+
+const handleReplyFromDetail = () => {
+  detailDialogVisible.value = false
+  handleReply(currentMessage.value)
+}
 </script>
 
 <style scoped>
@@ -278,5 +340,50 @@ onMounted(() => {
 .pagination {
   margin-top: 20px;
   justify-content: flex-end;
+}
+
+.message-table :deep(.el-table__row) {
+  cursor: pointer;
+}
+
+.message-detail {
+  padding: 10px;
+}
+
+.detail-header {
+  margin-bottom: 20px;
+  border-bottom: 1px solid #ebeef5;
+  padding-bottom: 15px;
+}
+
+.user-info-large {
+  display: flex;
+  align-items: center;
+  gap: 15px;
+}
+
+.user-meta {
+  display: flex;
+  flex-direction: column;
+}
+
+.user-meta .username {
+  font-size: 16px;
+  font-weight: bold;
+  color: #303133;
+}
+
+.user-meta .time {
+  font-size: 13px;
+  color: #909399;
+  margin-top: 4px;
+}
+
+.detail-content {
+  font-size: 15px;
+  line-height: 1.6;
+  color: #606266;
+  min-height: 100px;
+  white-space: pre-wrap;
 }
 </style>
