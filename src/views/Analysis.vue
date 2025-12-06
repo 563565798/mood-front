@@ -356,11 +356,21 @@ const renderWeekdayChart = (data) => {
 }
 
 const renderRatioChart = (data) => {
-  const chartData = [
-    { name: '积极情绪', value: data.positiveCount || 0, itemStyle: { color: '#67c23a' } },
-    { name: '消极情绪', value: data.negativeCount || 0, itemStyle: { color: '#f56c6c' } },
-    { name: '中性情绪', value: data.neutralCount || 0, itemStyle: { color: '#909399' } }
-  ]
+  const total = (data.positiveCount || 0) + (data.negativeCount || 0) + (data.neutralCount || 0)
+  
+  let chartData = []
+  let color = []
+  
+  if (total === 0) {
+    chartData = [{ name: '暂无数据', value: 0 }]
+    color = ['#dcdfe6']
+  } else {
+    chartData = [
+      { name: '积极情绪', value: data.positiveCount || 0, itemStyle: { color: '#67c23a' } },
+      { name: '消极情绪', value: data.negativeCount || 0, itemStyle: { color: '#f56c6c' } },
+      { name: '中性情绪', value: data.neutralCount || 0, itemStyle: { color: '#909399' } }
+    ]
+  }
   
   const option = {
     title: {
@@ -369,7 +379,7 @@ const renderRatioChart = (data) => {
     },
     tooltip: {
       trigger: 'item',
-      formatter: '{b}: {c} ({d}%)'
+      formatter: total === 0 ? '{b}' : '{b}: {c} ({d}%)'
     },
     legend: {
       orient: 'vertical',
@@ -380,7 +390,15 @@ const renderRatioChart = (data) => {
         type: 'pie',
         radius: ['40%', '70%'],
         avoidLabelOverlap: false,
-        data: chartData
+        label: {
+          show: total === 0,
+          position: 'center',
+          formatter: total === 0 ? '暂无数据' : null,
+          fontSize: 20,
+          fontWeight: 'bold',
+          color: '#909399'
+        },
+        data: total === 0 ? [{ value: 1, name: '暂无数据', itemStyle: { color: '#ebeef5' } }] : chartData
       }
     ]
   }

@@ -48,10 +48,14 @@
             </div>
           </template>
         </el-table-column>
-        <el-table-column prop="content" label="内容" show-overflow-tooltip>
+        <el-table-column prop="content" label="内容">
           <template #default="{ row }">
-            <el-badge v-if="activeTab === 'inbox' && row.isRead === 0" is-dot class="new-dot" />
-            <span>{{ row.content }}</span>
+            <el-tooltip content="点击查看详情" placement="top" :show-after="500">
+              <div class="message-content-cell">
+                <el-badge v-if="activeTab === 'inbox' && row.isRead === 0" is-dot class="new-dot" />
+                <span class="message-text">{{ row.content }}</span>
+              </div>
+            </el-tooltip>
           </template>
         </el-table-column>
         <el-table-column prop="createdAt" label="时间" width="160">
@@ -385,5 +389,17 @@ const handleReplyFromDetail = () => {
   color: #606266;
   min-height: 100px;
   white-space: pre-wrap;
+}
+
+.message-content-cell {
+  display: flex;
+  align-items: center;
+  width: 100%;
+}
+
+.message-text {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 </style>

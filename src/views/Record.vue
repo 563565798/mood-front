@@ -257,6 +257,29 @@
       </template>
     </el-dialog>
 
+    <!-- 记录详情弹窗 -->
+    <el-dialog
+      v-model="detailDialogVisible"
+      title="记录详情"
+      width="500px"
+    >
+      <div v-if="currentRecord" class="record-detail">
+        <div class="detail-item">
+          <div class="label">触发事件：</div>
+          <div class="content">{{ currentRecord.triggerEvent || '未记录' }}</div>
+        </div>
+        <div class="detail-item">
+          <div class="label">当时想法：</div>
+          <div class="content">{{ currentRecord.thoughts || '未记录' }}</div>
+        </div>
+      </div>
+      <template #footer>
+        <span class="dialog-footer">
+          <el-button @click="detailDialogVisible = false">关闭</el-button>
+        </span>
+      </template>
+    </el-dialog>
+
     <!-- 历史记录 -->
     <el-card shadow="hover" class="history-card">
       <template #header>
@@ -265,6 +288,47 @@
           <span>历史记录</span>
         </div>
       </template>
+
+      <!-- 筛选查询 -->
+      <el-form :inline="true" :model="searchForm" class="search-form">
+        <el-form-item label="情绪">
+          <el-select v-model="searchForm.moodTypeId" placeholder="全部" clearable style="width: 120px">
+            <el-option
+              v-for="item in moodTypes"
+              :key="item.id"
+              :label="item.name"
+              :value="item.id"
+            >
+              <span>{{ item.icon }} {{ item.name }}</span>
+            </el-option>
+          </el-select>
+        </el-form-item>
+        <el-form-item label="强度">
+          <el-select v-model="searchForm.intensity" placeholder="全部" clearable style="width: 100px">
+            <el-option v-for="i in 10" :key="i" :label="i" :value="i" />
+          </el-select>
+        </el-form-item>
+        <el-form-item label="标签">
+          <el-input v-model="searchForm.tag" placeholder="输入标签" clearable style="width: 150px" />
+        </el-form-item>
+        <el-form-item label="时间">
+          <el-date-picker
+            v-model="searchForm.dateRange"
+            type="daterange"
+            range-separator="至"
+            start-placeholder="开始日期"
+            end-placeholder="结束日期"
+            style="width: 240px"
+            value-format="YYYY-MM-DD"
+          />
+        </el-form-item>
+        <el-form-item>
+          <el-button type="primary" @click="handleSearch">查询</el-button>
+          <el-button @click="resetSearch">重置</el-button>
+        </el-form-item>
+      </el-form>
+
+      <el-divider />
 
       <el-table
         :data="records"
@@ -286,7 +350,27 @@
           </template>
         </el-table-column>
 
-        <el-table-column prop="triggerEvent" label="事件" show-overflow-tooltip />
+        <el-table-column prop="triggerEvent" label="事件">
+          <template #default="{ row }">
+            <el-tooltip content="点击查看详情" placement="top" :show-after="500" v-if="row.triggerEvent">
+              <div class="content-cell" @click="showDetail(row)">
+                <span class="content-text">{{ row.triggerEvent }}</span>
+              </div>
+            </el-tooltip>
+            <span v-else>-</span>
+          </template>
+        </el-table-column>
+
+        <el-table-column prop="thoughts" label="当时想法">
+          <template #default="{ row }">
+            <el-tooltip content="点击查看详情" placement="top" :show-after="500" v-if="row.thoughts">
+              <div class="content-cell" @click="showDetail(row)">
+                <span class="content-text">{{ row.thoughts }}</span>
+              </div>
+            </el-tooltip>
+            <span v-else>-</span>
+          </template>
+        </el-table-column>
 
         <el-table-column label="标签" width="200">
           <template #default="{ row }">
@@ -464,10 +548,20 @@ const loadMoodTypes = async () => {
 const loadRecords = async () => {
   loading.value = true
   try {
-    const data = await getMoodRecordPage({
+    const params = {
       pageNum: pagination.value.pageNum,
-      pageSize: pagination.value.pageSize
-    })
+      pageSize: pagination.value.pageSize,
+      moodTypeId: searchForm.value.moodTypeId,
+      intensity: searchForm.value.intensity,
+      tag: searchForm.value.tag
+    }
+    
+    if (searchForm.value.dateRange && searchForm.value.dateRange.length === 2) {
+      params.startDate = searchForm.value.dateRange[0]
+      params.endDate = searchForm.value.dateRange[1]
+    }
+    
+    const data = await getMoodRecordPage(params)
     records.value = data.records || []
     pagination.value.total = data.total || 0
   } catch (error) {
@@ -559,6 +653,29 @@ const editRecord = (record) => {
   editDialogVisible.value = true
 }
 
+// 筛选查询相关
+const searchForm = ref({
+  moodTypeId: null,
+  intensity: null,
+  tag: '',
+  dateRange: []
+})
+
+const handleSearch = () => {
+  pagination.value.pageNum = 1
+  loadRecords()
+}
+
+const resetSearch = () => {
+  searchForm.value = {
+    moodTypeId: null,
+    intensity: null,
+    tag: '',
+    dateRange: []
+  }
+  handleSearch()
+}
+
 const submitEdit = async () => {
   await editFormRef.value.validate(async (valid) => {
     if (valid) {
@@ -599,10 +716,22 @@ const deleteRecord = async (id) => {
   try {
     await apiDeleteMoodRecord(id)
     ElMessage.success('删除成功')
+    if (records.value.length === 1 && pagination.value.pageNum > 1) {
+      pagination.value.pageNum--
+    }
     await loadRecords()
   } catch (error) {
     console.error('删除失败', error)
   }
+}
+
+// 详情相关
+const detailDialogVisible = ref(false)
+const currentRecord = ref(null)
+
+const showDetail = (record) => {
+  currentRecord.value = record
+  detailDialogVisible.value = true
 }
 </script>
 
@@ -614,6 +743,20 @@ const deleteRecord = async (id) => {
 }
 
 .create-card,
+.filter-card {
+  margin-top: 20px;
+}
+
+.search-form {
+  display: flex;
+  flex-wrap: wrap;
+}
+
+.search-form .el-form-item {
+  margin-bottom: 0;
+  margin-right: 20px;
+}
+
 .history-card {
   margin-bottom: 20px;
 }
@@ -720,6 +863,44 @@ const deleteRecord = async (id) => {
 
 :deep(.custom-slider .el-slider__button) {
   border-color: #E6A23C;
+}
+.content-cell {
+  cursor: pointer;
+  width: 100%;
+}
+
+.content-text {
+  display: inline-block;
+  width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  vertical-align: middle;
+}
+
+.record-detail {
+  padding: 10px;
+}
+
+.detail-item {
+  margin-bottom: 20px;
+}
+
+.detail-item .label {
+  font-size: 14px;
+  color: #909399;
+  margin-bottom: 8px;
+  font-weight: bold;
+}
+
+.detail-item .content {
+  font-size: 15px;
+  line-height: 1.6;
+  color: #303133;
+  white-space: pre-wrap;
+  background-color: #f5f7fa;
+  padding: 10px;
+  border-radius: 4px;
 }
 </style>
 
