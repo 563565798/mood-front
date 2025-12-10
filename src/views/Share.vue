@@ -805,6 +805,17 @@ const sendMessageToUser = () => {
   color: #409eff;
 }
 
+.comment-user-info.clickable {
+  cursor: pointer;
+  padding: 2px 5px;
+  border-radius: 4px;
+  transition: background-color 0.2s;
+}
+
+.comment-user-info.clickable:hover {
+  background-color: #f0f2f5;
+}
+
 .comment-submit-area {
   display: flex;
   flex-direction: column;
