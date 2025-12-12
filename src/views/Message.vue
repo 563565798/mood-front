@@ -11,6 +11,14 @@
             <el-radio-button label="outbox">发件箱</el-radio-button>
           </el-radio-group>
           <div class="header-actions">
+            <el-switch
+              v-model="isMsgOpen"
+              active-text="接收私信"
+              inactive-text="拒收私信"
+              inline-prompt
+              style="margin-right: 15px"
+              @change="handleToggleMsgStatus"
+            />
             <el-button type="primary" @click="showSendDialog = true">
               <el-icon><ChatDotSquare /></el-icon>写私信
             </el-button>
@@ -63,14 +71,14 @@
             {{ formatDate(row.createdAt) }}
           </template>
         </el-table-column>
-        <el-table-column v-if="activeTab === 'inbox'" label="操作" width="120">
+        <el-table-column v-if="activeTab === 'inbox'" label="操作" width="180">
           <template #default="{ row }">
             <el-button
               v-if="row.isRead === 0"
               type="primary"
               size="small"
               text
-              @click="handleMarkRead(row)"
+              @click.stop="handleMarkRead(row)"
             >
               标记已读
             </el-button>
@@ -78,9 +86,29 @@
               type="primary"
               size="small"
               text
-              @click="handleReply(row)"
+              @click.stop="handleReply(row)"
             >
               回复
+            </el-button>
+            <el-button
+              type="danger"
+              size="small"
+              text
+              @click.stop="handleDelete(row)"
+            >
+              删除
+            </el-button>
+          </template>
+        </el-table-column>
+        <el-table-column v-if="activeTab === 'outbox'" label="操作" width="100">
+          <template #default="{ row }">
+            <el-button
+              type="danger"
+              size="small"
+              text
+              @click.stop="handleDelete(row)"
+            >
+              删除
             </el-button>
           </template>
         </el-table-column>
@@ -167,9 +195,10 @@
 <script setup>
 import { ref, computed, onMounted } from 'vue'
 import { useRoute } from 'vue-router'
-import { getInbox, getOutbox, sendMessage, markAsRead, markAllAsRead } from '@/api/message'
+import { getInbox, getOutbox, sendMessage, markAsRead, markAllAsRead, deleteMessage } from '@/api/message'
+import { getCurrentUser, updateMsgStatus } from '@/api/auth'
 import { useMessageStore } from '@/stores/message'
-import { ElMessage } from 'element-plus'
+import { ElMessage, ElMessageBox } from 'element-plus'
 import request from '@/utils/request'
 
 const route = useRoute()
@@ -233,6 +262,10 @@ const handleMarkRead = async (row) => {
 }
 
 const handleMarkAllRead = async () => {
+  if (unreadCount.value === 0) {
+    ElMessage.info('无未读私信')
+    return
+  }
   try {
     await markAllAsRead()
     ElMessage.success('已全部标记为已读')
@@ -275,7 +308,8 @@ const handleSend = async () => {
       loadMessages()
     }
   } catch (error) {
-    ElMessage.error(error.message || '发送失败')
+    // 全局拦截器已处理错误提示
+    console.error(error)
   } finally {
     sending.value = false
   }
@@ -284,6 +318,7 @@ const handleSend = async () => {
 onMounted(() => {
   loadMessages()
   messageStore.loadUnreadCount()
+  loadUserMsgStatus()
   
   if (route.query.to) {
     sendForm.value.receiverUsername = route.query.to
@@ -308,6 +343,59 @@ const handleRowClick = (row) => {
 const handleReplyFromDetail = () => {
   detailDialogVisible.value = false
   handleReply(currentMessage.value)
+}
+
+const handleDelete = (row) => {
+  ElMessageBox.confirm(
+    '确定要删除这条消息吗？此操作不可恢复。',
+    '提示',
+    {
+      confirmButtonText: '确定',
+      cancelButtonText: '取消',
+      type: 'warning',
+    }
+  ).then(async () => {
+    try {
+      await deleteMessage(row.id)
+      ElMessage.success('删除成功')
+      // 如果是未读消息被删除，更新未读数
+      if (activeTab.value === 'inbox' && row.isRead === 0) {
+        messageStore.decrementUnread()
+      }
+      // 刷新列表
+      if (messages.value.length === 1 && pagination.value.page > 1) {
+        pagination.value.page--
+      }
+      await loadMessages()
+    } catch (error) {
+      ElMessage.error('删除失败')
+    }
+  }).catch(() => {})
+}
+
+// 私信开关逻辑
+const isMsgOpen = ref(true)
+
+const loadUserMsgStatus = async () => {
+  try {
+    const user = await getCurrentUser()
+    // 如果后端返回null，默认为开启(1)
+    isMsgOpen.value = user.isMsgOpen !== 0
+  } catch (error) {
+    console.error('获取用户设置失败', error)
+  }
+}
+
+const handleToggleMsgStatus = async (val) => {
+  try {
+    const status = val ? 1 : 0
+    await updateMsgStatus(status)
+    ElMessage.success(val ? '已开启私信接收' : '已关闭私信接收')
+  } catch (error) {
+    // 恢复开关状态
+    isMsgOpen.value = !val
+    ElMessage.error('操作失败')
+  }
 }
 </script>
 

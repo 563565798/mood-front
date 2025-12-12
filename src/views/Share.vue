@@ -56,15 +56,24 @@
     <el-card shadow="hover" class="share-wall-card">
       <template #header>
         <div class="card-header">
-          <el-icon><Message /></el-icon>
-          <span>心情分享墙</span>
-          <el-button type="primary" link @click="loadShares">
-            <el-icon><Refresh /></el-icon>刷新
-          </el-button>
+          <div class="header-left">
+            <el-icon><Message /></el-icon>
+            <span>心情分享墙</span>
+          </div>
+          <div class="header-actions">
+            <el-button type="primary" link @click="isWallVisible = !isWallVisible">
+              <el-icon><component :is="isWallVisible ? 'Hide' : 'View'" /></el-icon>
+              {{ isWallVisible ? '隐藏' : '显示' }}
+            </el-button>
+            <el-button type="primary" link @click="loadShares" v-if="isWallVisible">
+              <el-icon><Refresh /></el-icon>刷新
+            </el-button>
+          </div>
         </div>
       </template>
 
-      <div v-loading="loading" class="share-list">
+      <div v-show="isWallVisible">
+        <div v-loading="loading" class="share-list">
         <div v-for="share in shares" :key="share.id" class="share-item">
           <div class="share-header">
             <div class="share-user-left">
@@ -137,6 +146,7 @@
         @current-change="loadShares"
         style="margin-top: 20px; text-align: center"
       />
+      </div>
     </el-card>
 
     <!-- 评论弹窗 -->
@@ -258,7 +268,7 @@ import {
   deleteShareComment
 } from '@/api/share'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import { ChatDotSquare, Message, Refresh, Star, ChatDotRound, Delete, User } from '@element-plus/icons-vue'
+import { ChatDotSquare, Message, Refresh, Star, ChatDotRound, Delete, User, Hide, View } from '@element-plus/icons-vue'
 import dayjs from 'dayjs'
 import relativeTime from 'dayjs/plugin/relativeTime'
 import 'dayjs/locale/zh-cn'
@@ -273,6 +283,7 @@ const moodTypes = ref([])
 const shares = ref([])
 const loading = ref(false)
 const submitting = ref(false)
+const isWallVisible = ref(true)
 
 const form = ref({
   moodTypeId: null,
@@ -554,8 +565,23 @@ const sendMessageToUser = () => {
   font-weight: bold;
 }
 
-.card-header .el-button {
-  margin-left: auto;
+.card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 16px;
+  font-weight: bold;
+}
+
+.header-left {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.header-actions {
+  display: flex;
+  gap: 10px;
 }
 
 .mood-selector-mini {

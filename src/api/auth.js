@@ -65,6 +65,17 @@ export function changePassword(data) {
   })
 }
 
+/**
+ * 更新私信开启状态
+ */
+export function updateMsgStatus(isOpen) {
+  return request({
+    url: '/users/msg-status',
+    method: 'put',
+    params: { isOpen }
+  })
+}
+
 
 
 

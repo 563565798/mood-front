@@ -29,3 +29,8 @@ export const markAllAsRead = () => {
 export const getUnreadCount = () => {
     return request.get('/messages/unread-count')
 }
+
+// 删除私信
+export const deleteMessage = (id) => {
+    return request.delete(`/messages/${id}`)
+}
