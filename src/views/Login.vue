@@ -2,7 +2,28 @@
   <div class="login-container">
     <div class="login-box">
       <div class="login-header">
-        <el-icon :size="48" color="#667eea"><MostlyCloudy /></el-icon>
+        <div class="logo-wrapper">
+          <svg class="mood-logo" viewBox="0 0 1024 1024" xmlns="http://www.w3.org/2000/svg" width="80" height="80">
+            <defs>
+              <linearGradient id="logo-gradient" x1="0%" y1="0%" x2="100%" y2="100%">
+                <stop offset="0%" style="stop-color:#fff;stop-opacity:1" />
+                <stop offset="100%" style="stop-color:#e0e0e0;stop-opacity:1" />
+              </linearGradient>
+              <filter id="glow">
+                <feGaussianBlur stdDeviation="2.5" result="coloredBlur"/>
+                <feMerge>
+                  <feMergeNode in="coloredBlur"/>
+                  <feMergeNode in="SourceGraphic"/>
+                </feMerge>
+              </filter>
+            </defs>
+            <path d="M512 64C264.6 64 64 264.6 64 512s200.6 448 448 448 448-200.6 448-448S759.4 64 512 64z m0 820c-205.4 0-372-166.6-372-372s166.6-372 372-372 372 166.6 372 372-166.6 372-372 372z" fill="url(#logo-gradient)" opacity="0.4"/>
+            <path d="M512 140c-205.4 0-372 166.6-372 372s166.6 372 372 372 372-166.6 372-372-166.6-372-372-372z m0 680c-170 0-308-138-308-308s138-308 308-308 308 138 308 308-138 308-308 308z" fill="url(#logo-gradient)" opacity="0.6"/>
+            <circle cx="350" cy="400" r="40" fill="#fff" filter="url(#glow)"/>
+            <circle cx="674" cy="400" r="40" fill="#fff" filter="url(#glow)"/>
+            <path d="M350 580 c0 0 80 100 162 100 82 0 162-100 162-100" stroke="#fff" stroke-width="40" stroke-linecap="round" fill="none" filter="url(#glow)"/>
+          </svg>
+        </div>
         <h1>情绪记录系统</h1>
         <p>记录每一刻心情，发现生活的美好</p>
       </div>
@@ -234,16 +255,33 @@ const handleResetPassword = async () => {
   justify-content: center;
   align-items: center;
   min-height: 100vh;
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  background: linear-gradient(-45deg, #ee7752, #e73c7e, #23a6d5, #23d5ab);
+  background-size: 400% 400%;
+  animation: gradient 15s ease infinite;
+}
+
+@keyframes gradient {
+  0% {
+    background-position: 0% 50%;
+  }
+  50% {
+    background-position: 100% 50%;
+  }
+  100% {
+    background-position: 0% 50%;
+  }
 }
 
 .login-box {
   width: 90%;
-  max-width: 1400px;
-  padding: 60px 80px;
-  background: white;
+  max-width: 500px; /* Reduced width for better proportion */
+  padding: 50px 40px;
+  background: rgba(255, 255, 255, 0.25);
+  box-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.37);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
   border-radius: 20px;
-  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.15);
+  border: 1px solid rgba(255, 255, 255, 0.18);
 }
 
 .login-header {
@@ -251,35 +289,78 @@ const handleResetPassword = async () => {
   margin-bottom: 30px;
 }
 
+/* Logo Styles */
+.mood-logo {
+  filter: drop-shadow(0 0 10px rgba(255, 255, 255, 0.5));
+  animation: float 6s ease-in-out infinite;
+}
+
+@keyframes float {
+  0% { transform: translateY(0px) rotate(0deg); }
+  50% { transform: translateY(-10px) rotate(5deg); }
+  100% { transform: translateY(0px) rotate(0deg); }
+}
+
 .login-header h1 {
   margin: 15px 0 10px;
-  font-size: 36px;
+  font-size: 32px;
   font-weight: 600;
-  color: #2c3e50;
+  color: #fff; /* Changed to white for contrast on glass */
+  text-shadow: 0 2px 4px rgba(0,0,0,0.1);
 }
 
 .login-header p {
-  color: #7f8c8d;
+  color: #eee; /* Lightened for contrast */
   font-size: 16px;
+  text-shadow: 0 1px 2px rgba(0,0,0,0.1);
 }
 
 .login-form {
   margin-top: 30px;
-  max-width: 500px;
-  margin-left: auto;
-  margin-right: auto;
+}
+
+:deep(.el-input__wrapper) {
+  background: rgba(255, 255, 255, 0.8);
+}
+
+:deep(.el-input__wrapper.is-focus) {
+  background: #fff;
 }
 
 .login-button {
   width: 100%;
   margin-top: 10px;
+  height: 40px;
+  font-size: 16px;
+  background: linear-gradient(to right, #667eea, #764ba2);
+  border: none;
+  transition: all 0.3s ease;
+}
+
+.login-button:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 5px 15px rgba(0,0,0,0.2);
 }
 
 .login-footer {
   text-align: center;
-  margin-top: 20px;
-  color: #7f8c8d;
+  margin-top: 25px;
+  color: #fff;
   font-size: 14px;
+}
+
+:deep(.el-link) {
+  color: #fff !important;
+  font-weight: 500;
+}
+
+:deep(.el-link:hover) {
+  color: #e0e0e0 !important;
+  text-decoration: underline;
+}
+
+:deep(.el-divider--vertical) {
+  border-left-color: rgba(255,255,255,0.5);
 }
 </style>
 
