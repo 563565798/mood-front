@@ -318,8 +318,12 @@ const renderDistributionChart = (data) => {
 }
 
 const renderWeekdayChart = (data) => {
-  const weekdays = Object.keys(data)
-  const values = Object.values(data)
+  // 定义星期顺序（周一到周日）
+  const weekdayOrder = ['周一', '周二', '周三', '周四', '周五', '周六', '周日']
+  
+  // 按顺序提取数据，如果某天没有数据则默认为0
+  const weekdays = weekdayOrder
+  const values = weekdayOrder.map(day => data[day] || 0)
   
   const option = {
     title: {
