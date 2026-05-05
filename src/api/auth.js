@@ -23,6 +23,16 @@ export function login(data) {
 }
 
 /**
+ * 用户登出
+ */
+export function logout() {
+  return request({
+    url: '/auth/logout',
+    method: 'post'
+  })
+}
+
+/**
  * 获取当前用户信息
  */
 export function getCurrentUser() {

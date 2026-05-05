@@ -123,7 +123,7 @@ const handleCommand = async (command) => {
       cancelButtonText: '取消',
       type: 'warning'
     })
-    userStore.logout()
+    await userStore.logout()
     ElMessage.success('退出成功')
     router.push('/login')
   } else if (command === 'profile') {

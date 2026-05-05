@@ -337,7 +337,7 @@ const submitChangePassword = async () => {
         passwordVisible.value = false
         
         // Logout
-        userStore.logout()
+        await userStore.logout()
         router.push('/login')
       } catch (error) {
         console.error('修改密码失败', error)

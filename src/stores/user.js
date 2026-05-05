@@ -1,5 +1,5 @@
 import { defineStore } from 'pinia'
-import { login, getCurrentUser } from '@/api/auth'
+import { login, getCurrentUser, logout as logoutApi } from '@/api/auth'
 
 export const useUserStore = defineStore('user', {
   state: () => ({
@@ -30,7 +30,16 @@ export const useUserStore = defineStore('user', {
     },
 
     // 登出
-    logout() {
+    async logout() {
+      // 先调用后端接口将Token加入黑名单
+      try {
+        if (this.token) {
+          await logoutApi()
+        }
+      } catch (error) {
+        console.error('后端登出请求失败', error)
+      }
+      // 无论后端是否成功，都清除本地状态
       this.token = ''
       this.userInfo = null
       localStorage.removeItem('token')
